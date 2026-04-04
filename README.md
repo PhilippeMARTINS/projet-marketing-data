@@ -50,6 +50,39 @@ The goal: model the behavior of 50,000 customers across 6 marketing channels (Em
 
 ---
 
+## 📐 Choix de conception du dataset synthétique
+
+Les données étant propriétaires en entreprise, ce dataset a été entièrement 
+simulé avec NumPy en s'appuyant sur des benchmarks marketing sectoriels 2022-2024.
+
+### Paramètres des canaux marketing
+
+| Canal | Poids | Taux de conversion last-touch | Position typique |
+|-------|-------|-------------------------------|------------------|
+| Email | 25% | 18% | Closing (fin de parcours) |
+| SEO | 20% | 12% | Découverte (début) |
+| Google Ads | 20% | 14% | Découverte (début) |
+| Instagram | 15% | 8% | Milieu de parcours |
+| Facebook | 12% | 7% | Milieu de parcours |
+| YouTube | 8% | 5% | Découverte (début) |
+
+> Ces taux s'inspirent des benchmarks Salesforce State of Marketing 2023 
+> et HubSpot Marketing Report 2023 pour le secteur télécom/e-commerce.
+
+### Segments clients
+
+| Segment | Part | Bonus conversion |
+|---------|------|-----------------|
+| Premium | 20% | +15% |
+| Standard | 45% | +5% |
+| Low-Value | 25% | -5% |
+| Churner | 10% | -10% |
+
+> La distribution des segments reflète une base client télécom typique,
+> inspirée des structures observées chez les opérateurs français.
+
+---
+
 ## 🗂️ Project Structure
 ```
 projet-marketing-data/
