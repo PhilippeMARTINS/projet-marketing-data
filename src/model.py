@@ -188,6 +188,48 @@ def save_model(model) -> None:
     joblib.dump(model, MODEL_PATH)
     print(f"✅ Modèle sauvegardé : {MODEL_PATH}")
 
+def plot_shap(model, X_test: pd.DataFrame, feature_names: list) -> None:
+    """
+    Génère les visualisations SHAP pour expliquer les prédictions du modèle.
+    - Summary plot : impact global de chaque feature (barres)
+    - Waterfall plot : explication d'une prédiction individuelle
+    """
+    import shap
+    import matplotlib
+    matplotlib.use("Agg")
+
+    print("⏳ Calcul des valeurs SHAP...")
+
+    # Utilisation de l'API moderne Explanation
+    explainer = shap.TreeExplainer(model)
+    shap_exp  = explainer(X_test)
+
+    # Classe 1 uniquement (convertis)
+    shap_exp_class1 = shap_exp[:, :, 1]
+
+    # ── Summary plot (barres) ─────────────────────────────────────────────
+    shap.summary_plot(
+        shap_exp_class1.values,
+        X_test,
+        feature_names=feature_names,
+        plot_type="bar",
+        show=False,
+    )
+    plt.title("SHAP — Impact des features sur la conversion",
+              fontsize=14, fontweight="bold")
+    plt.tight_layout()
+    plt.savefig(OUTPUT_PATH / "shap_summary.png", dpi=150, bbox_inches="tight")
+    plt.close("all")
+    print("✅ shap_summary.png sauvegardé")
+
+    # ── Waterfall plot (1er client) ───────────────────────────────────────
+    shap.plots.waterfall(shap_exp_class1[0], show=False)
+    plt.title("SHAP — Explication d'une prédiction individuelle",
+              fontsize=14, fontweight="bold")
+    plt.tight_layout()
+    plt.savefig(OUTPUT_PATH / "shap_waterfall.png", dpi=150, bbox_inches="tight")
+    plt.close("all")
+    print("✅ shap_waterfall.png sauvegardé")
 
 def run_model() -> None:
     """Point d'entrée principal du module ML."""
@@ -200,6 +242,7 @@ def run_model() -> None:
     plot_feature_importance(model, feats)
     plot_roc_curve(y_test, y_proba)
     plot_confusion_matrix(y_test, y_pred)
+    plot_shap(model, X_test, feats)
     save_model(model)
     print("\n✅ Module ML terminé")
 
