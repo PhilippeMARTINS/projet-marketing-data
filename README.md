@@ -174,7 +174,7 @@ projet-marketing-data/
 ### Courbe ROC
 ![ROC](outputs/roc_curve.png)
 
-### 🔍 Explainabilité du modèle — SHAP
+### 🔍 Explicabilité abilité du modèle — SHAP
 
 #### Summary plot — Impact global des features
 ![SHAP Summary](outputs/shap_summary.png)
