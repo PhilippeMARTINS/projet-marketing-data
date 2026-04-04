@@ -174,6 +174,31 @@ projet-marketing-data/
 ### Courbe ROC
 ![ROC](outputs/roc_curve.png)
 
+### 🔍 Explainabilité du modèle — SHAP
+
+#### Summary plot — Impact global des features
+![SHAP Summary](outputs/shap_summary.png)
+
+> **Lecture** : Chaque barre représente l'impact moyen d'une feature sur les
+> prédictions du modèle (mean absolute SHAP value). Plus la barre est longue,
+> plus la feature influence la décision du modèle.
+
+**Insights clés** :
+- Le **segment client** (Premium, Standard, Low-Value, Churner) est de loin
+  la feature la plus déterminante — le profil client prime sur tout le reste
+- Le **canal last-touch** arrive en 2ème position, confirmant que le canal
+  de conversion a un impact réel sur la prédiction
+- L'âge, l'ancienneté, le canal first-touch et la région ont un impact marginal
+
+#### Waterfall plot — Explication d'une prédiction individuelle
+![SHAP Waterfall](outputs/shap_waterfall.png)
+
+> **Lecture** : Ce graphique décompose la prédiction d'un client spécifique.
+> La valeur de base E[f(x)] = 0.5 est la prédiction moyenne du modèle.
+> Chaque barre montre comment une feature pousse la prédiction vers le haut
+> (rouge, favorable à la conversion) ou vers le bas (bleu, défavorable).
+> La valeur finale f(x) = 0.622 indique une probabilité de conversion de 62%.
+
 ---
 
 ## 🚀 Installation & Usage
