@@ -5,6 +5,7 @@ Point d'entrée du pipeline complet :
 Generate → Extract → Transform → Load → Analyze → Model
 """
 
+import logging
 from src.generate import run_generation
 from src.extract import load_all_datasets
 from src.transform import run_transformations
@@ -13,29 +14,43 @@ from src.analyze import run_analysis
 from src.model import run_model
 
 
-if __name__ == "__main__":
-    print("=" * 50)
-    print("  PIPELINE MARKETING — PARCOURS CLIENT MULTITOUCH")
-    print("=" * 50)
+# ── Configuration du logging ──────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%H:%M:%S",
+    handlers=[
+        logging.StreamHandler(),                        # affichage console
+        logging.FileHandler("pipeline.log", mode="w"), # sauvegarde dans un fichier
+    ],
+)
 
-    print("\n=== ÉTAPE 1 — GÉNÉRATION DES DONNÉES ===")
+logger = logging.getLogger(__name__)
+
+
+if __name__ == "__main__":
+    logger.info("=" * 50)
+    logger.info("  PIPELINE MARKETING — PARCOURS CLIENT MULTITOUCH")
+    logger.info("=" * 50)
+
+    logger.info("ÉTAPE 1 — GÉNÉRATION DES DONNÉES")
     run_generation()
 
-    print("\n=== ÉTAPE 2 — EXTRACTION ===")
+    logger.info("ÉTAPE 2 — EXTRACTION")
     datasets = load_all_datasets()
 
-    print("\n=== ÉTAPE 3 — TRANSFORMATION ===")
+    logger.info("ÉTAPE 3 — TRANSFORMATION")
     data = run_transformations(datasets)
 
-    print("\n=== ÉTAPE 4 — CHARGEMENT SQL ===")
+    logger.info("ÉTAPE 4 — CHARGEMENT SQL")
     save_to_sqlite(data)
 
-    print("\n=== ÉTAPE 5 — ANALYSE & VISUALISATION ===")
+    logger.info("ÉTAPE 5 — ANALYSE & VISUALISATION")
     run_analysis()
 
-    print("\n=== ÉTAPE 6 — MODÈLE ML ===")
+    logger.info("ÉTAPE 6 — MODÈLE ML")
     run_model()
 
-    print("\n" + "=" * 50)
-    print("  PIPELINE TERMINÉ")
-    print("=" * 50)
+    logger.info("=" * 50)
+    logger.info("PIPELINE TERMINÉ")
+    logger.info("=" * 50)

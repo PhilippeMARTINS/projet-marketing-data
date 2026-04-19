@@ -6,3 +6,5 @@ __pycache__/
 .env
 .ipynb_checkpoints/
 data/raw/
+# Logs
+pipeline.log

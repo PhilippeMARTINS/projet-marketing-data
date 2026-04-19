@@ -5,6 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat&logo=python&logoColor=white)
 ![Pandas](https://img.shields.io/badge/Pandas-2.2-150458?style=flat&logo=pandas&logoColor=white)
 ![Scikit--learn](https://img.shields.io/badge/Scikit--learn-1.4-F7931E?style=flat&logo=scikit-learn&logoColor=white)
+![LightGBM](https://img.shields.io/badge/LightGBM-4.3-02B0B0?style=flat)
 ![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=flat&logo=sqlite&logoColor=white)
 ![Matplotlib](https://img.shields.io/badge/Matplotlib-3.8-11557C?style=flat)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.32-FF4B4B?style=flat&logo=streamlit&logoColor=white)
@@ -149,12 +150,44 @@ projet-marketing-data/
         │
         ▼
 [ MODEL ] ──────── model.py
-  Random Forest · AUC-ROC 0.69 · Recall 73%
+  LightGBM · AUC-ROC 0.77 · CV 5-fold : 0.766 ± 0.006
         │
         ▼
 [ DASHBOARD ] ─── app.py
   Streamlit · Filtres dynamiques · Console SQL
 ```
+
+---
+
+## 🤖 Sélection du modèle
+
+4 modèles ont été comparés en **cross-validation 5-fold** sur les mêmes features et le même split train/test. La démarche complète est disponible dans [`notebooks/model_comparison.ipynb`](notebooks/model_comparison.ipynb).
+
+### Modèles testés
+
+| Modèle | AUC CV (5-fold) | Écart-type | Justification du test |
+|--------|----------------|------------|----------------------|
+| **LightGBM** | **0.7663** | **0.0058** | Alternative Microsoft à XGBoost, plus rapide sur gros volumes |
+| XGBoost | 0.7659 | 0.0058 | Standard industrie depuis 2016, gestion native du déséquilibre |
+| Random Forest | 0.7598 | 0.0041 | Référence robuste sur données tabulaires, peu de tuning |
+| Logistic Regression | 0.6860 | 0.0052 | Baseline incontournable pour valider l'apport des modèles complexes |
+
+### Modèles exclus
+
+| Modèle | Raison |
+|--------|--------|
+| SVM / KNN | Complexité quadratique, inadaptés à 50 000 lignes |
+| Réseaux de neurones | Overkill pour features tabulaires simples, faible interprétabilité |
+| CatBoost | Redondant avec LightGBM/XGBoost pour ce cas d'usage |
+
+### Modèle retenu : LightGBM
+
+LightGBM obtient la meilleure AUC (0.7663) avec un écart-type stable (±0.0058), confirmant sa robustesse sur ce dataset. La différence avec XGBoost est faible (0.0004) mais LightGBM présente l'avantage supplémentaire d'être plus rapide à l'entraînement sur des volumes importants — un critère pertinent en contexte production.
+
+**Performances sur le test set :**
+- AUC-ROC : **0.7706**
+- Recall classe convertie : **71%**
+- Accuracy globale : **70%**
 
 ---
 
@@ -234,6 +267,18 @@ projet-marketing-data/
 
 ---
 
+## 🧪 Tests
+
+```bash
+pytest tests/ -v
+```
+
+32 tests unitaires couvrant :
+- `src/transform.py` — nettoyage, attribution, stats canaux
+- `src/generate.py` — fonction sigmoid, score de conversion
+
+---
+
 ## 🚀 Installation & Usage
 
 ### Prérequis / Prerequisites
@@ -274,7 +319,9 @@ streamlit run app.py
 | **NumPy** | Simulation du dataset |
 | **Pandas** | Manipulation des données |
 | **SQLite** | Persistance & requêtes analytiques |
-| **Scikit-learn** | Modèle Random Forest |
+| **Scikit-learn** | Pipeline ML, métriques, cross-validation |
+| **LightGBM** | Modèle de prédiction de conversion (retenu après comparaison) |
+| **XGBoost**  | Comparé durant le model selection (notebook) |
 | **Matplotlib / Seaborn** | Visualisations |
 | **Streamlit** | Dashboard interactif |
 | **Joblib** | Sauvegarde du modèle |
