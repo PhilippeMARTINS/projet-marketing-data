@@ -16,3 +16,6 @@ streamlit>=1.32
 # Utilitaires
 joblib>=1.4
 jupyter>=1.0
+
+# Tests
+pytest>=8.4
