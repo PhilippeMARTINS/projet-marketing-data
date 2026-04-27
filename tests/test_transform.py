@@ -65,8 +65,8 @@ class TestCleanDatasets:
         """La colonne 'date' doit être convertie en datetime."""
         datasets = {"clients": sample_clients, "touchpoints": sample_touchpoints}
         result = clean_datasets(datasets)
-        assert result["touchpoints"]["date"].dtype == "datetime64[ns]", (
-            "La colonne 'date' doit être de type datetime64[ns]"
+        assert pd.api.types.is_datetime64_any_dtype(result["touchpoints"]["date"]), (
+            "La colonne 'date' doit être de type datetime"
         )
 
     def test_is_first_touch_converted_to_bool(self, sample_clients, sample_touchpoints):
