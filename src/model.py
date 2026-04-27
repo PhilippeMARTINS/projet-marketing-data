@@ -132,11 +132,14 @@ def train_model(X: pd.DataFrame, y: pd.Series) -> tuple:
     print(f"   scale_pos_weight = {scale_pos_weight:.2f} (gestion déséquilibre)")
 
     model = LGBMClassifier(
-        n_estimators=300,
-        max_depth=5,
-        learning_rate=0.05,
-        subsample=0.8,
-        colsample_bytree=0.8,
+        n_estimators=250,
+        max_depth=3,
+        learning_rate=0.042988,
+        subsample=0.740392,
+        colsample_bytree=0.849540,
+        reg_alpha=0.001519,
+        reg_lambda=0.014123,
+        min_child_samples=98,
         scale_pos_weight=scale_pos_weight,
         random_state=42,
         n_jobs=-1,
