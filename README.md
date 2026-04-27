@@ -10,6 +10,7 @@
 ![Matplotlib](https://img.shields.io/badge/Matplotlib-3.8-11557C?style=flat)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.32-FF4B4B?style=flat&logo=streamlit&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Complete-brightgreen?style=flat)
+![Tests](https://github.com/PhilippeMARTINS/projet-marketing-data/actions/workflows/tests.yml/badge.svg)
 
 ---
 
@@ -279,35 +280,48 @@ pytest tests/ -v
 
 ---
 
-## 🚀 Installation & Usage
+## 🚀 Installation & Lancement / Getting Started
 
 ### Prérequis / Prerequisites
 - Python 3.11+
+- pip
 
-### Setup
+### Étapes / Steps
+
+1. Cloner le dépôt / Clone the repository
 ```bash
-# Cloner le dépôt / Clone the repository
 git clone https://github.com/PhilippeMARTINS/projet-marketing-data.git
 cd projet-marketing-data
+```
 
-# Créer l'environnement virtuel / Create virtual environment
+2. Créer et activer l'environnement virtuel / Create and activate virtual environment
+```bash
 python -m venv venv
-source venv/bin/activate      # Linux / Mac
-venv\Scripts\activate         # Windows
+```
+```bash
+# Windows
+venv\Scripts\activate
+# Mac/Linux
+source venv/bin/activate
+```
 
-# Installer les dépendances / Install dependencies
+3. Installer les dépendances / Install dependencies
+```bash
 pip install -r requirements.txt
 ```
 
-### Lancer le pipeline complet / Run the full pipeline
+4. Lancer le pipeline complet / Run the full pipeline
 ```bash
 python main.py
 ```
 
-### Lancer le dashboard / Run the dashboard
+5. Lancer le dashboard / Run the dashboard
 ```bash
 streamlit run app.py
 ```
+
+> ⚠️ Ne jamais copier le dossier `venv/` d'un PC à l'autre — toujours le recréer localement.
+> Never copy the `venv/` folder from one PC to another — always recreate it locally.
 
 ---
 
