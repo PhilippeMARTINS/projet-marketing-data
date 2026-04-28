@@ -131,29 +131,98 @@ def compute_canal_stats(touchpoints: pd.DataFrame, clients: pd.DataFrame) -> pd.
     print(f"\n📊 Stats par canal :\n{stats.to_string(index=False)}")
     return stats
 
-
-def run_transformations(datasets: dict) -> dict:
+def compute_roi(touchpoints: pd.DataFrame, clients: pd.DataFrame) -> pd.DataFrame:
     """
-    Orchestre toutes les transformations.
+    Calcule le CPA et le ROI par canal en croisant :
+    - Les coûts par touchpoint (canal_costs)
+    - Les conversions par canal (canal_stats)
+    - La valeur moyenne par conversion et par segment (conversion_value)
 
     Returns:
-        dict: {
-            "clients": DataFrame,
-            "touchpoints": DataFrame,
-            "attribution": DataFrame,
-            "canal_stats": DataFrame
-        }
+        pd.DataFrame: Table roi_by_canal avec CPA, ROI, coût total, valeur générée
     """
-    datasets = clean_datasets(datasets)
+    from src.load import query_sqlite
+
+    # Chargement des tables de référence
+    canal_costs      = query_sqlite("SELECT * FROM canal_costs")
+    conversion_value = query_sqlite("SELECT * FROM conversion_value")
+
+    # Nombre de touchpoints par canal
+    nb_touches_canal = (
+        touchpoints.groupby("canal")
+        .size()
+        .reset_index(name="nb_touchpoints")
+    )
+
+    # Coût total par canal = nb touchpoints × coût moyen par touchpoint
+    df = nb_touches_canal.merge(canal_costs, on="canal", how="left")
+    df["cout_total"] = (
+        df["nb_touchpoints"] * df["cout_par_touchpoint_moyen"]
+    ).round(2)
+
+    # Nombre de conversions par canal (last-touch)
+    conversions = (
+        touchpoints[touchpoints["is_last_touch"] == True]
+        .groupby("canal")["converti"]
+        .sum()
+        .reset_index(name="nb_conversions")
+    )
+    df = df.merge(conversions, on="canal", how="left")
+
+    # Valeur générée = nb conversions × valeur moyenne pondérée par segment
+    # On calcule la valeur moyenne globale pondérée par la distribution des segments
+    segment_dist = (
+        clients.groupby("segment")
+        .size()
+        .reset_index(name="nb_clients")
+    )
+    segment_dist["poids"] = (
+        segment_dist["nb_clients"] / segment_dist["nb_clients"].sum()
+    )
+    segment_dist = segment_dist.merge(conversion_value, on="segment", how="left")
+    valeur_moyenne_globale = (
+        segment_dist["valeur_conversion_moyenne"] * segment_dist["poids"]
+    ).sum()
+
+    df["valeur_generee"] = (
+        df["nb_conversions"] * valeur_moyenne_globale
+    ).round(2)
+
+    # CPA = coût total / nb conversions
+    df["cpa"] = (
+        df["cout_total"] / df["nb_conversions"].replace(0, np.nan)
+    ).round(2)
+
+    # ROI = (valeur générée - coût total) / coût total × 100
+    # SEO a un coût nul → ROI infini → on le gère séparément
+    df["roi"] = np.where(
+        df["cout_total"] > 0,
+        ((df["valeur_generee"] - df["cout_total"]) / df["cout_total"] * 100).round(1),
+        np.nan,  # SEO : organique, ROI non calculable de cette façon
+    )
+
+    df = df[["canal", "nb_touchpoints", "cout_total", "nb_conversions",
+             "valeur_generee", "cpa", "roi", "type_facturation"]]
+    df = df.sort_values("roi", ascending=False, na_position="first")
+
+    print(f"\n📊 ROI par canal :")
+    print(df.to_string(index=False))
+    return df
+
+def run_transformations(datasets: dict) -> dict:
+    """Orchestre toutes les transformations."""
+    datasets   = clean_datasets(datasets)
     touchpoints = datasets["touchpoints"]
-    clients = datasets["clients"]
+    clients     = datasets["clients"]
 
     attribution = compute_attribution(touchpoints)
     canal_stats = compute_canal_stats(touchpoints, clients)
+    roi         = compute_roi(touchpoints, clients)  # ← nouveau
 
     return {
-        "clients": clients,
+        "clients":    clients,
         "touchpoints": touchpoints,
         "attribution": attribution,
         "canal_stats": canal_stats,
+        "roi":         roi,          # ← nouveau
     }

@@ -23,10 +23,13 @@ def save_to_sqlite(data: dict) -> None:
     conn = sqlite3.connect(DB_PATH)
 
     tables = {
-        "clients":     data["clients"],
-        "touchpoints": data["touchpoints"],
-        "attribution": data["attribution"],
-        "canal_stats": data["canal_stats"],
+        "clients":          data["clients"],
+        "touchpoints":      data["touchpoints"],
+        "attribution":      data["attribution"],
+        "canal_stats":      data["canal_stats"],
+        "canal_costs":      data["canal_costs"],
+        "conversion_value": data["conversion_value"],
+        "roi_by_canal":     data["roi"],
     }
 
     for table_name, df in tables.items():

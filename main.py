@@ -34,7 +34,7 @@ if __name__ == "__main__":
     logger.info("=" * 50)
 
     logger.info("ÉTAPE 1 — GÉNÉRATION DES DONNÉES")
-    run_generation()
+    clients, touchpoints, canal_costs, conversion_value = run_generation()
 
     logger.info("ÉTAPE 2 — EXTRACTION")
     datasets = load_all_datasets()
@@ -43,6 +43,8 @@ if __name__ == "__main__":
     data = run_transformations(datasets)
 
     logger.info("ÉTAPE 4 — CHARGEMENT SQL")
+    data["canal_costs"]      = canal_costs
+    data["conversion_value"] = conversion_value
     save_to_sqlite(data)
 
     logger.info("ÉTAPE 5 — ANALYSE & VISUALISATION")

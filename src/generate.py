@@ -215,22 +215,70 @@ def generate_touchpoints(clients: pd.DataFrame) -> pd.DataFrame:
     print(f"   Taux de conversion global : {df[df['is_last_touch']]['converti'].mean():.2%}")
     return df
 
+def generate_canal_costs() -> pd.DataFrame:
+    """
+    Génère la table des coûts par canal.
+    Inspiré des benchmarks marketing digitaux 2023-2024 (France).
 
-def save_datasets(clients: pd.DataFrame, touchpoints: pd.DataFrame) -> None:
+    Returns:
+        pd.DataFrame: Table canal_costs
+    """
+    data = {
+        "canal": ["Email", "SEO", "Google Ads", "Instagram", "Facebook", "YouTube"],
+        "cout_par_touchpoint_moyen": [0.03, 0.00, 1.65, 1.30, 1.15, 0.30],
+        "cout_par_touchpoint_min":   [0.01, 0.00, 0.80, 0.60, 0.50, 0.10],
+        "cout_par_touchpoint_max":   [0.05, 0.00, 2.50, 2.00, 1.80, 0.50],
+        "type_facturation": ["Email", "Organique", "CPC", "CPM", "CPM", "CPV"],
+    }
+    df = pd.DataFrame(data)
+    print(f"✅ Canal costs générés — {df.shape[0]} canaux")
+    return df
+
+
+def generate_conversion_value() -> pd.DataFrame:
+    """
+    Génère la table de valeur estimée par conversion et par segment.
+    Représente le panier moyen d'un client converti selon son segment.
+
+    Returns:
+        pd.DataFrame: Table conversion_value
+    """
+    data = {
+        "segment": ["Premium", "Standard", "Low-Value", "Churner"],
+        "valeur_conversion_moyenne": [180.0, 85.0, 35.0, 20.0],
+        "valeur_conversion_min":     [120.0, 50.0, 15.0, 10.0],
+        "valeur_conversion_max":     [350.0, 150.0, 60.0, 40.0],
+    }
+    df = pd.DataFrame(data)
+    print(f"✅ Conversion value générée — {df.shape[0]} segments")
+    return df
+
+def save_datasets(
+    clients: pd.DataFrame,
+    touchpoints: pd.DataFrame,
+    canal_costs: pd.DataFrame,
+    conversion_value: pd.DataFrame,
+) -> None:
     """Sauvegarde les datasets générés en CSV."""
     clients.to_csv(RAW_DATA_PATH / "clients.csv", index=False)
     touchpoints.to_csv(RAW_DATA_PATH / "touchpoints.csv", index=False)
+    canal_costs.to_csv(RAW_DATA_PATH / "canal_costs.csv", index=False)
+    conversion_value.to_csv(RAW_DATA_PATH / "conversion_value.csv", index=False)
     print(f"✅ clients.csv sauvegardé ({len(clients)} lignes)")
     print(f"✅ touchpoints.csv sauvegardé ({len(touchpoints)} lignes)")
+    print(f"✅ canal_costs.csv sauvegardé ({len(canal_costs)} lignes)")
+    print(f"✅ conversion_value.csv sauvegardé ({len(conversion_value)} lignes)")
 
 
-def run_generation() -> tuple[pd.DataFrame, pd.DataFrame]:
+def run_generation() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Point d'entrée principal de la génération."""
     print("=== GÉNÉRATION DU DATASET ===")
-    clients     = generate_clients()
-    touchpoints = generate_touchpoints(clients)
-    save_datasets(clients, touchpoints)
-    return clients, touchpoints
+    clients          = generate_clients()
+    touchpoints      = generate_touchpoints(clients)
+    canal_costs      = generate_canal_costs()
+    conversion_value = generate_conversion_value()
+    save_datasets(clients, touchpoints, canal_costs, conversion_value)
+    return clients, touchpoints, canal_costs, conversion_value
 
 
 if __name__ == "__main__":
