@@ -1,21 +1,30 @@
 """
 analyze.py
 ----------
-Module d'analyse : visualisations du parcours client multitouch.
+Module d'analyse : génération des 5 visualisations marketing
+(attribution, conversion canal, longueur parcours, position canal, conversion segment).
+Les graphiques sont sauvegardés dans outputs/ au format PNG.
 """
 
-import pandas as pd
+import logging
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-import seaborn as sns
 import numpy as np
-from pathlib import Path
+import seaborn as sns
+
 from src.load import query_sqlite
 
 
+# ── Configuration ─────────────────────────────────────────────────────────────
+logger = logging.getLogger(__name__)
+
 OUTPUT_PATH = Path("outputs")
 OUTPUT_PATH.mkdir(exist_ok=True)
+
 sns.set_theme(style="whitegrid")
+
 COULEURS_CANAUX = {
     "Email":      "#2563EB",
     "Google Ads": "#16A34A",
@@ -26,10 +35,12 @@ COULEURS_CANAUX = {
 }
 
 
+# ── Visualisations ────────────────────────────────────────────────────────────
+
 def plot_attribution_comparaison() -> None:
     """
     Comparaison des 4 modèles d'attribution par canal.
-    C'est le graphique star du projet.
+    Colonnes utilisées : last_click, first_click, linear, time_decay.
     """
     df = query_sqlite("SELECT * FROM attribution ORDER BY last_click DESC")
 
@@ -40,25 +51,24 @@ def plot_attribution_comparaison() -> None:
     width   = 0.2
 
     fig, ax = plt.subplots(figsize=(14, 6))
-
     for i, (modele, label) in enumerate(zip(modeles, labels)):
         ax.bar(x + i * width, df[modele], width, label=label, alpha=0.85)
 
     ax.set_xticks(x + width * 1.5)
     ax.set_xticklabels(canaux, fontsize=11)
     ax.set_ylabel("Part d'attribution (%)")
-    ax.set_title("Comparaison des modèles d'attribution par canal",
+    ax.set_title("Comparaison des modeles d'attribution par canal",
                  fontsize=14, fontweight="bold")
-    ax.legend(title="Modèle d'attribution")
+    ax.legend(title="Modele d'attribution")
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:.0f}%"))
     plt.tight_layout()
     plt.savefig(OUTPUT_PATH / "attribution_comparaison.png", dpi=150)
     plt.close()
-    print("✅ attribution_comparaison.png sauvegardé")
+    logger.info("Visualisation sauvegardee : attribution_comparaison.png")
 
 
 def plot_taux_conversion_canal() -> None:
-    """Taux de conversion last-touch par canal."""
+    """Taux de conversion last-touch par canal (en %)."""
     df = query_sqlite("""
         SELECT canal, taux_conversion, nb_conversions
         FROM canal_stats
@@ -82,73 +92,58 @@ def plot_taux_conversion_canal() -> None:
     plt.tight_layout()
     plt.savefig(OUTPUT_PATH / "taux_conversion_canal.png", dpi=150)
     plt.close()
-    print("✅ taux_conversion_canal.png sauvegardé")
+    logger.info("Visualisation sauvegardee : taux_conversion_canal.png")
 
 
 def plot_parcours_longueur() -> None:
-    """Distribution du nombre de touchpoints avant conversion vs non-conversion."""
-    df_conv = query_sqlite("""
-        SELECT n_touches_total, converti
+    """Distribution du nombre de touchpoints par client."""
+    df = query_sqlite("""
+        SELECT client_id, MAX(n_touches_total) AS n_touches
         FROM touchpoints
-        WHERE is_last_touch = 1
+        GROUP BY client_id
     """)
 
     fig, ax = plt.subplots(figsize=(10, 5))
-
-    for converti, label, couleur in [
-        (1, "Converti",     "#16A34A"),
-        (0, "Non converti", "#DC2626"),
-    ]:
-        subset = df_conv[df_conv["converti"] == converti]["n_touches_total"]
-        ax.hist(subset, bins=range(1, 8), alpha=0.6, label=label,
-                color=couleur, edgecolor="white", density=True)
-
+    sns.histplot(df["n_touches"], bins=6, kde=False, color="#2563EB", ax=ax)
     ax.set_xlabel("Nombre de touchpoints")
-    ax.set_ylabel("Densité")
-    ax.set_title("Distribution des touchpoints : convertis vs non-convertis",
+    ax.set_ylabel("Nombre de clients")
+    ax.set_title("Distribution de la longueur du parcours client",
                  fontsize=14, fontweight="bold")
-    ax.legend()
-    ax.set_xticks(range(1, 7))
     plt.tight_layout()
     plt.savefig(OUTPUT_PATH / "distribution_touchpoints.png", dpi=150)
     plt.close()
-    print("✅ distribution_touchpoints.png sauvegardé")
+    logger.info("Visualisation sauvegardee : distribution_touchpoints.png")
 
 
 def plot_canal_position() -> None:
-    """
-    Heatmap : fréquence d'apparition de chaque canal
-    selon sa position dans le parcours (1er, 2ème, etc.).
-    """
+    """Heatmap du taux de conversion par canal et position dans le parcours."""
     df = query_sqlite("""
-        SELECT canal, position, COUNT(*) as nb
+        SELECT canal,
+               position,
+               ROUND(AVG(converti) * 100, 2) AS taux_conversion
         FROM touchpoints
         WHERE position <= 5
         GROUP BY canal, position
         ORDER BY canal, position
     """)
 
-    pivot = df.pivot(index="canal", columns="position", values="nb").fillna(0)
+    pivot = df.pivot(index="canal", columns="position",
+                     values="taux_conversion").fillna(0)
     pivot.columns = [f"Position {c}" for c in pivot.columns]
 
-    # Normalisation par ligne (en % de chaque canal)
-    pivot_pct = pivot.div(pivot.sum(axis=1), axis=0) * 100
-
-    fig, ax = plt.subplots(figsize=(10, 5))
-    sns.heatmap(pivot_pct, annot=True, fmt=".1f", cmap="Blues",
-                linewidths=0.5, ax=ax, cbar_kws={"label": "%"})
-    ax.set_title("Position des canaux dans le parcours client (%)",
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.heatmap(pivot, annot=True, fmt=".1f", cmap="YlOrRd",
+                linewidths=0.5, ax=ax, cbar_kws={"label": "Taux de conversion (%)"})
+    ax.set_title("Taux de conversion par canal et position dans le parcours",
                  fontsize=14, fontweight="bold")
-    ax.set_xlabel("Position dans le parcours")
-    ax.set_ylabel("Canal")
     plt.tight_layout()
-    plt.savefig(OUTPUT_PATH / "heatmap_position_canal.png", dpi=150)
+    plt.savefig(OUTPUT_PATH / "heatmap_position_canal.png", dpi=150, bbox_inches="tight")
     plt.close()
-    print("✅ heatmap_position_canal.png sauvegardé")
+    logger.info("Visualisation sauvegardee : heatmap_position_canal.png")
 
 
 def plot_conversion_par_segment() -> None:
-    """Taux de conversion par segment client et par canal."""
+    """Barres groupees du taux de conversion par canal et segment client."""
     df = query_sqlite("""
         SELECT t.canal, c.segment,
                ROUND(AVG(t.converti) * 100, 2) AS taux_conversion
@@ -174,15 +169,31 @@ def plot_conversion_par_segment() -> None:
     plt.tight_layout()
     plt.savefig(OUTPUT_PATH / "conversion_par_segment.png", dpi=150, bbox_inches="tight")
     plt.close()
-    print("✅ conversion_par_segment.png sauvegardé")
+    logger.info("Visualisation sauvegardee : conversion_par_segment.png")
 
+
+# ── Orchestration ──────────────────────────────────────────────────────────────
 
 def run_analysis() -> None:
-    """Lance toutes les visualisations."""
-    print("=== ANALYSE & VISUALISATION ===")
+    """
+    Lance la generation de toutes les visualisations et les sauvegarde dans outputs/.
+
+    Visualisations produites :
+        - attribution_comparaison.png
+        - taux_conversion_canal.png
+        - distribution_touchpoints.png
+        - heatmap_position_canal.png
+        - conversion_par_segment.png
+    """
+    logger.info("Generation des visualisations...")
     plot_attribution_comparaison()
     plot_taux_conversion_canal()
     plot_parcours_longueur()
     plot_canal_position()
     plot_conversion_par_segment()
-    print("\n✅ Toutes les visualisations sont dans outputs/")
+    logger.info("Toutes les visualisations sont dans '%s'", OUTPUT_PATH)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    run_analysis()

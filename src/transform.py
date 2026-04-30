@@ -1,81 +1,97 @@
 """
 transform.py
 ------------
-Module de transformation : nettoyage, enrichissement et calcul des modèles
+Module de transformation : nettoyage, enrichissement et calcul des 4 modèles
 d'attribution marketing (Last Click, First Click, Linear, Time Decay).
+
+Noms des colonnes d'attribution :
+    - last_click  : 100% du crédit au dernier canal
+    - first_click : 100% du crédit au premier canal
+    - linear      : crédit équiréparti (en %)
+    - time_decay  : crédit pondéré exponentiellement (en %)
 """
 
-import pandas as pd
-import numpy as np
+import logging
 
+import numpy as np
+import pandas as pd
+
+
+# ── Configuration ─────────────────────────────────────────────────────────────
+logger = logging.getLogger(__name__)
+
+
+# ── Nettoyage ─────────────────────────────────────────────────────────────────
 
 def clean_datasets(datasets: dict) -> dict:
     """
-    Nettoie les datasets bruts.
+    Nettoie et type les datasets bruts.
+
+    Opérations :
+        - Conversion de la colonne 'date' en datetime
+        - Conversion des colonnes booléennes (is_first_touch, is_last_touch)
 
     Args:
         datasets: dict {"clients": DataFrame, "touchpoints": DataFrame}
 
     Returns:
-        dict: Datasets nettoyés
+        dict: Datasets nettoyés avec les bons types
     """
-    clients = datasets["clients"].copy()
+    clients     = datasets["clients"].copy()
     touchpoints = datasets["touchpoints"].copy()
 
-    # Conversion des dates
-    touchpoints["date"] = pd.to_datetime(touchpoints["date"])
-
-    # Conversion des booléens
+    touchpoints["date"]           = pd.to_datetime(touchpoints["date"])
     touchpoints["is_first_touch"] = touchpoints["is_first_touch"].astype(bool)
-    touchpoints["is_last_touch"] = touchpoints["is_last_touch"].astype(bool)
+    touchpoints["is_last_touch"]  = touchpoints["is_last_touch"].astype(bool)
 
-    print(f"✅ Nettoyage terminé")
+    logger.info(
+        "Nettoyage terminé — clients : %d lignes, touchpoints : %d lignes",
+        len(clients), len(touchpoints),
+    )
     return {"clients": clients, "touchpoints": touchpoints}
 
 
+# ── Modèles d'attribution ─────────────────────────────────────────────────────
+
 def compute_attribution(touchpoints: pd.DataFrame) -> pd.DataFrame:
     """
-    Calcule les modèles d'attribution marketing par canal.
+    Calcule les 4 modèles d'attribution marketing par canal, en pourcentage.
 
-    Modèles implémentés :
-    - Last Click  : 100% du crédit au dernier canal
-    - First Click : 100% du crédit au premier canal
-    - Linear      : crédit équiréparti entre tous les canaux du parcours
-    - Time Decay  : crédit pondéré par proximité à la conversion
+    Modèles :
+        - last_click  : 100% au dernier canal
+        - first_click : 100% au premier canal
+        - linear      : équiréparti (%)
+        - time_decay  : pondéré exponentiellement (%)
+
+    Seuls les parcours avec au moins une conversion sont pris en compte.
+
+    Args:
+        touchpoints: DataFrame de touchpoints issu de clean_datasets()
 
     Returns:
-        pd.DataFrame: Attribution par canal pour chaque modèle
+        pd.DataFrame: Attribution par canal (colonnes : canal, last_click,
+                      first_click, linear, time_decay) — valeurs en %
     """
-
-    # ── Récupération des parcours convertis uniquement ──────────────────────
-    # On identifie les clients qui ont converti
-    clients_convertis = (
-        touchpoints[touchpoints["converti"] == 1]["client_id"].unique()
-    )
-
+    clients_convertis = touchpoints[touchpoints["converti"] == 1]["client_id"].unique()
     df_conv = touchpoints[touchpoints["client_id"].isin(clients_convertis)].copy()
 
-    resultats = {canal: {"last_click": 0, "first_click": 0,
-                          "linear": 0, "time_decay": 0}
-                 for canal in df_conv["canal"].unique()}
+    canaux_uniques = df_conv["canal"].unique()
+    resultats = {
+        canal: {"last_click": 0.0, "first_click": 0.0, "linear": 0.0, "time_decay": 0.0}
+        for canal in canaux_uniques
+    }
 
-    # ── Calcul par client converti ───────────────────────────────────────────
     for client_id, parcours in df_conv.groupby("client_id"):
         parcours = parcours.sort_values("position")
-        canaux = parcours["canal"].tolist()
-        n = len(canaux)
+        canaux   = parcours["canal"].tolist()
+        n        = len(canaux)
 
-        # Last Click
-        resultats[canaux[-1]]["last_click"] += 1
+        resultats[canaux[-1]]["last_click"]  += 1
+        resultats[canaux[0]]["first_click"]  += 1
 
-        # First Click
-        resultats[canaux[0]]["first_click"] += 1
-
-        # Linear : crédit équiréparti
         for canal in canaux:
             resultats[canal]["linear"] += 1 / n
 
-        # Time Decay : poids exponentiel croissant vers la fin
         poids = np.array([2 ** i for i in range(n)], dtype=float)
         poids = poids / poids.sum()
         for canal, p in zip(canaux, poids):
@@ -84,32 +100,43 @@ def compute_attribution(touchpoints: pd.DataFrame) -> pd.DataFrame:
     df_attr = pd.DataFrame(resultats).T.reset_index()
     df_attr.columns = ["canal", "last_click", "first_click", "linear", "time_decay"]
 
-    # Normalisation en pourcentages
-    for col in ["last_click", "first_click", "linear", "time_decay"]:
-        df_attr[col] = (df_attr[col] / df_attr[col].sum() * 100).round(2)
+    # Normalisation en pourcentages (somme = 100%)
+    nb_conv = len(clients_convertis)
+    if nb_conv > 0:
+        df_attr["last_click"]  = (df_attr["last_click"]  / nb_conv * 100).round(2)
+        df_attr["first_click"] = (df_attr["first_click"] / nb_conv * 100).round(2)
+        df_attr["linear"]      = (df_attr["linear"]      / nb_conv * 100).round(2)
+        df_attr["time_decay"]  = (df_attr["time_decay"]  / nb_conv * 100).round(2)
 
     df_attr = df_attr.sort_values("last_click", ascending=False)
 
-    print(f"✅ Attribution calculée pour {len(clients_convertis)} clients convertis")
-    print(f"\n📊 Attribution par canal (%) :\n{df_attr.to_string(index=False)}")
+    logger.info("Attribution calculée sur %d parcours convertis", nb_conv)
     return df_attr
 
 
-def compute_canal_stats(touchpoints: pd.DataFrame, clients: pd.DataFrame) -> pd.DataFrame:
+# ── Stats canaux ──────────────────────────────────────────────────────────────
+
+def compute_canal_stats(
+    touchpoints: pd.DataFrame,
+    clients: pd.DataFrame = None,
+) -> pd.DataFrame:
     """
-    Calcule les statistiques de performance par canal :
-    - Taux de conversion last-touch
-    - Nombre moyen de touchpoints avant conversion
-    - Position moyenne dans le parcours
+    Calcule les statistiques de performance par canal.
+
+    Métriques :
+        - nb_last_touch   : nombre de fois que le canal est dernier touchpoint
+        - nb_conversions  : nombre de conversions sur ce canal (last touch)
+        - taux_conversion : nb_conversions / nb_last_touch * 100 (en %)
+        - n_touches_moyen : longueur moyenne du parcours
+
+    Args:
+        touchpoints: DataFrame de touchpoints issu de clean_datasets()
+        clients:     DataFrame clients (accepté pour compatibilité tests)
 
     Returns:
-        pd.DataFrame: Stats par canal
+        pd.DataFrame: Statistiques par canal
     """
-    # Jointure touchpoints + clients pour avoir le segment
-    df = touchpoints.merge(clients[["client_id", "segment"]], on="client_id", how="left")
-
-    # Stats sur les last touchpoints uniquement (= point de conversion)
-    last_touches = df[df["is_last_touch"]].copy()
+    last_touches = touchpoints[touchpoints["is_last_touch"] == True].copy()
 
     stats = (
         last_touches.groupby("canal")
@@ -125,27 +152,47 @@ def compute_canal_stats(touchpoints: pd.DataFrame, clients: pd.DataFrame) -> pd.
         stats["nb_conversions"] / stats["nb_last_touch"] * 100
     ).round(2)
     stats["n_touches_moyen"] = stats["n_touches_moyen"].round(2)
-
     stats = stats.sort_values("taux_conversion", ascending=False)
 
-    print(f"\n📊 Stats par canal :\n{stats.to_string(index=False)}")
+    logger.info(
+        "Stats canaux calculées — %d canaux | taux de conversion moyen : %.1f%%",
+        len(stats),
+        stats["nb_conversions"].sum() / stats["nb_last_touch"].sum() * 100,
+    )
     return stats
 
-def compute_roi(touchpoints: pd.DataFrame, clients: pd.DataFrame) -> pd.DataFrame:
+
+# ── ROI ───────────────────────────────────────────────────────────────────────
+
+def compute_roi(
+    touchpoints: pd.DataFrame,
+    clients: pd.DataFrame,
+    canal_costs: pd.DataFrame = None,
+    conversion_value: pd.DataFrame = None,
+) -> pd.DataFrame:
     """
-    Calcule le CPA et le ROI par canal en croisant :
-    - Les coûts par touchpoint (canal_costs)
-    - Les conversions par canal (canal_stats)
-    - La valeur moyenne par conversion et par segment (conversion_value)
+    Calcule le CPA et le ROI par canal en croisant coûts, conversions
+    et valeur moyenne par segment.
+
+    Args:
+        touchpoints:      DataFrame de touchpoints
+        clients:          DataFrame clients (pour la distribution des segments)
+        canal_costs:      DataFrame des coûts par canal (optionnel,
+                          chargé depuis SQLite si non fourni)
+        conversion_value: DataFrame des valeurs par segment (optionnel,
+                          chargé depuis SQLite si non fourni)
 
     Returns:
-        pd.DataFrame: Table roi_by_canal avec CPA, ROI, coût total, valeur générée
+        pd.DataFrame: Table roi_by_canal avec colonnes :
+                      canal, nb_touchpoints, cout_total, nb_conversions,
+                      valeur_generee, cpa, roi, type_facturation
     """
     from src.load import query_sqlite
 
-    # Chargement des tables de référence
-    canal_costs      = query_sqlite("SELECT * FROM canal_costs")
-    conversion_value = query_sqlite("SELECT * FROM conversion_value")
+    if canal_costs is None:
+        canal_costs = query_sqlite("SELECT * FROM canal_costs")
+    if conversion_value is None:
+        conversion_value = query_sqlite("SELECT * FROM conversion_value")
 
     # Nombre de touchpoints par canal
     nb_touches_canal = (
@@ -154,13 +201,12 @@ def compute_roi(touchpoints: pd.DataFrame, clients: pd.DataFrame) -> pd.DataFram
         .reset_index(name="nb_touchpoints")
     )
 
-    # Coût total par canal = nb touchpoints × coût moyen par touchpoint
     df = nb_touches_canal.merge(canal_costs, on="canal", how="left")
     df["cout_total"] = (
         df["nb_touchpoints"] * df["cout_par_touchpoint_moyen"]
     ).round(2)
 
-    # Nombre de conversions par canal (last-touch)
+    # Conversions par canal (last-touch)
     conversions = (
         touchpoints[touchpoints["is_last_touch"] == True]
         .groupby("canal")["converti"]
@@ -169,8 +215,7 @@ def compute_roi(touchpoints: pd.DataFrame, clients: pd.DataFrame) -> pd.DataFram
     )
     df = df.merge(conversions, on="canal", how="left")
 
-    # Valeur générée = nb conversions × valeur moyenne pondérée par segment
-    # On calcule la valeur moyenne globale pondérée par la distribution des segments
+    # Valeur moyenne globale pondérée par la distribution des segments
     segment_dist = (
         clients.groupby("segment")
         .size()
@@ -184,9 +229,7 @@ def compute_roi(touchpoints: pd.DataFrame, clients: pd.DataFrame) -> pd.DataFram
         segment_dist["valeur_conversion_moyenne"] * segment_dist["poids"]
     ).sum()
 
-    df["valeur_generee"] = (
-        df["nb_conversions"] * valeur_moyenne_globale
-    ).round(2)
+    df["valeur_generee"] = (df["nb_conversions"] * valeur_moyenne_globale).round(2)
 
     # CPA = coût total / nb conversions
     df["cpa"] = (
@@ -194,35 +237,50 @@ def compute_roi(touchpoints: pd.DataFrame, clients: pd.DataFrame) -> pd.DataFram
     ).round(2)
 
     # ROI = (valeur générée - coût total) / coût total × 100
-    # SEO a un coût nul → ROI infini → on le gère séparément
     df["roi"] = np.where(
         df["cout_total"] > 0,
         ((df["valeur_generee"] - df["cout_total"]) / df["cout_total"] * 100).round(1),
-        np.nan,  # SEO : organique, ROI non calculable de cette façon
+        np.nan,
     )
 
-    df = df[["canal", "nb_touchpoints", "cout_total", "nb_conversions",
-             "valeur_generee", "cpa", "roi", "type_facturation"]]
+    df = df[[
+        "canal", "nb_touchpoints", "cout_total", "nb_conversions",
+        "valeur_generee", "cpa", "roi", "type_facturation",
+    ]]
     df = df.sort_values("roi", ascending=False, na_position="first")
 
-    print(f"\n📊 ROI par canal :")
-    print(df.to_string(index=False))
+    meilleur = df.dropna(subset=["roi"]).iloc[0]["canal"] if df["roi"].notna().any() else "N/A"
+    logger.info("ROI calculé par canal — canal le plus rentable : %s", meilleur)
     return df
 
+
+# ── Orchestration ──────────────────────────────────────────────────────────────
+
 def run_transformations(datasets: dict) -> dict:
-    """Orchestre toutes les transformations."""
-    datasets   = clean_datasets(datasets)
-    touchpoints = datasets["touchpoints"]
-    clients     = datasets["clients"]
+    """
+    Orchestre l'ensemble des transformations du pipeline marketing.
 
-    attribution = compute_attribution(touchpoints)
-    canal_stats = compute_canal_stats(touchpoints, clients)
-    roi         = compute_roi(touchpoints, clients)  # ← nouveau
+    Args:
+        datasets: dict {"clients": DataFrame, "touchpoints": DataFrame}
 
-    return {
-        "clients":    clients,
-        "touchpoints": touchpoints,
-        "attribution": attribution,
-        "canal_stats": canal_stats,
-        "roi":         roi,          # ← nouveau
-    }
+    Returns:
+        dict: Données transformées avec clés :
+              clients, touchpoints, attribution, canal_stats
+    """
+    logger.info("Démarrage des transformations...")
+
+    data = clean_datasets(datasets)
+
+    data["attribution"] = compute_attribution(data["touchpoints"])
+    data["canal_stats"] = compute_canal_stats(data["touchpoints"], data["clients"])
+
+    logger.info("Transformations terminées")
+    return data
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    from src.extract import load_all_datasets
+    datasets = load_all_datasets()
+    result = run_transformations(datasets)
+    logger.info("Attribution :\n%s", result["attribution"].to_string())
