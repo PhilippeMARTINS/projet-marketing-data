@@ -7,10 +7,9 @@
 ![Scikit--learn](https://img.shields.io/badge/Scikit--learn-1.4-F7931E?style=flat&logo=scikit-learn&logoColor=white)
 ![LightGBM](https://img.shields.io/badge/LightGBM-4.3-02B0B0?style=flat)
 ![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=flat&logo=sqlite&logoColor=white)
-![Matplotlib](https://img.shields.io/badge/Matplotlib-3.8-11557C?style=flat)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.32-FF4B4B?style=flat&logo=streamlit&logoColor=white)
-![Status](https://img.shields.io/badge/Status-Complete-brightgreen?style=flat)
 ![Tests](https://github.com/PhilippeMARTINS/projet-marketing-data/actions/workflows/tests.yml/badge.svg)
+![Status](https://img.shields.io/badge/Status-Complete-brightgreen?style=flat)
 
 ---
 
@@ -18,18 +17,20 @@
 
 Ce projet simule et analyse un **pipeline de données de parcours client multitouch**, inspiré de mon travail chez **Bouygues Telecom** (pôle Big Data) où j'analysais l'efficacité des canaux marketing et le parcours client.
 
-L'objectif : modéliser le comportement de 50 000 clients à travers 6 canaux marketing (Email, Google Ads, SEO, Instagram, Facebook, YouTube), calculer des **modèles d'attribution marketing** (Last Click, First Click, Linear, Time Decay) et **prédire la conversion** avec un modèle Random Forest.
+L'objectif : modéliser le comportement de 50 000 clients à travers 6 canaux marketing (Email, Google Ads, SEO, Instagram, Facebook, YouTube), calculer des **modèles d'attribution marketing** (Last Click, First Click, Linear, Time Decay) et **prédire la conversion** avec un modèle LightGBM.
 
-> Le dataset est synthétique et simulé avec des paramètres réalistes inspirés des benchmarks marketing sectoriels 2022-2024 — ce type de données reste propriétaire en entreprise.
+> Le dataset est synthétique, simulé avec des paramètres réalistes inspirés des benchmarks marketing sectoriels 2022-2024 — ce type de données reste propriétaire en entreprise.
 
 ### Ce que ce projet démontre
 
 - Simulation de données réalistes avec NumPy (distributions statistiques, patterns métier)
-- Conception d'un pipeline ETL modulaire en Python sur données multitables
-- Implémentation de 4 modèles d'attribution marketing from scratch (Last Click, First Click, Linear, Time Decay)
-- Analyse du parcours client multitouch : position des canaux, séquences de conversion
-- Modèle de prédiction de conversion avec Scikit-learn (Random Forest, gestion du déséquilibre de classes)
+- Pipeline ETL modulaire en Python sur données multitables
+- Implémentation des 4 modèles d'attribution marketing from scratch (Last Click, First Click, Linear, Time Decay)
+- Analyse du parcours client multitouch : position des canaux, taux de conversion, CPA, ROI
+- Validation automatique de la qualité des données à chaque étape (`validate.py`)
+- Modèle de prédiction de conversion avec LightGBM (AUC-ROC 0.77, CV 5-fold)
 - Dashboard interactif avec filtres dynamiques et console SQL (Streamlit)
+- Suite de tests unitaires (32 tests pytest)
 
 ---
 
@@ -37,7 +38,7 @@ L'objectif : modéliser le comportement de 50 000 clients à travers 6 canaux ma
 
 This project simulates and analyzes a **multitouch customer journey data pipeline**, inspired by my apprenticeship at **Bouygues Telecom** (Big Data division) where I analyzed marketing channel effectiveness and customer journeys.
 
-The goal: model the behavior of 50,000 customers across 6 marketing channels (Email, Google Ads, SEO, Instagram, Facebook, YouTube), compute **marketing attribution models** (Last Click, First Click, Linear, Time Decay), and **predict conversion** using a Random Forest classifier.
+The goal: model the behavior of 50,000 customers across 6 marketing channels, compute **marketing attribution models** (Last Click, First Click, Linear, Time Decay), and **predict conversion** using a LightGBM classifier.
 
 > The dataset is synthetic, generated with realistic parameters based on 2022-2024 marketing industry benchmarks — this type of data remains proprietary in enterprise settings.
 
@@ -46,237 +47,212 @@ The goal: model the behavior of 50,000 customers across 6 marketing channels (Em
 - Realistic data simulation with NumPy (statistical distributions, business patterns)
 - Modular ETL pipeline design in Python on multi-table data
 - Implementation of 4 marketing attribution models from scratch
-- Multitouch customer journey analysis: channel position, conversion sequences
-- Conversion prediction model with Scikit-learn (Random Forest, class imbalance handling)
+- Multitouch customer journey analysis: channel position, conversion rate, CPA, ROI
+- Automatic data quality validation at each step (`validate.py`)
+- Conversion prediction model with LightGBM (AUC-ROC 0.77, 5-fold CV)
 - Interactive dashboard with dynamic filters and SQL console (Streamlit)
-
----
-
-## 📐 Choix de conception du dataset synthétique
-
-Les données étant propriétaires en entreprise, ce dataset a été entièrement 
-simulé avec NumPy en s'appuyant sur des benchmarks marketing sectoriels 2022-2024.
-
-### Paramètres des canaux marketing
-
-| Canal | Poids | Taux de conversion last-touch | Position typique |
-|-------|-------|-------------------------------|------------------|
-| Email | 25% | 18% | Closing (fin de parcours) |
-| SEO | 20% | 12% | Découverte (début) |
-| Google Ads | 20% | 14% | Découverte (début) |
-| Instagram | 15% | 8% | Milieu de parcours |
-| Facebook | 12% | 7% | Milieu de parcours |
-| YouTube | 8% | 5% | Découverte (début) |
-
-> Ces taux s'inspirent des benchmarks Salesforce State of Marketing 2023 
-> et HubSpot Marketing Report 2023 pour le secteur télécom/e-commerce.
-
-### Segments clients
-
-| Segment | Part | Bonus conversion |
-|---------|------|-----------------|
-| Premium | 20% | +15% |
-| Standard | 45% | +5% |
-| Low-Value | 25% | -5% |
-| Churner | 10% | -10% |
-
-> La distribution des segments reflète une base client télécom typique,
-> inspirée des structures observées chez les opérateurs français.
+- Unit test suite (32 pytest tests)
 
 ---
 
 ## 🗂️ Project Structure
+
 ```
 projet-marketing-data/
 │
-├── data/
-│   ├── raw/                        # Fichiers CSV générés
-│   │   ├── clients.csv             # 50 000 clients
-│   │   └── touchpoints.csv         # ~150 000 interactions
-│   └── processed/
-│       ├── marketing.db            # Base SQLite
-│       └── model.pkl               # Modèle Random Forest sauvegardé
-│
 ├── src/
-│   ├── __init__.py
-│   ├── generate.py                 # Simulation du dataset
-│   ├── extract.py                  # Chargement des CSV
-│   ├── transform.py                # Nettoyage + modèles d'attribution
-│   ├── load.py                     # Sauvegarde SQLite
-│   ├── analyze.py                  # Génération des visualisations
-│   └── model.py                    # Modèle ML Random Forest
+│   ├── generate.py             # Simulation du dataset (50k clients, ~150k touchpoints)
+│   ├── extract.py              # Chargement des CSV
+│   ├── transform.py            # Nettoyage + 4 modèles d'attribution + ROI
+│   ├── load.py                 # Sauvegarde SQLite
+│   ├── analyze.py              # Génération des visualisations statiques
+│   ├── model.py                # Modèle LightGBM — prédiction de conversion
+│   └── validate.py             # Validation qualité des données
 │
-├── outputs/                        # Graphiques générés (PNG)
-│   ├── attribution_comparaison.png
-│   ├── taux_conversion_canal.png
-│   ├── distribution_touchpoints.png
-│   ├── heatmap_position_canal.png
-│   ├── conversion_par_segment.png
-│   ├── feature_importance.png
-│   ├── roc_curve.png
-│   └── confusion_matrix.png
+├── tests/
+│   ├── test_generate.py        # 13 tests — sigmoid, score de conversion
+│   └── test_transform.py       # 19 tests — nettoyage, attribution, stats canaux
 │
-├── notebooks/                      # Notebooks exploratoires
-├── app.py                          # Dashboard Streamlit
-├── main.py                         # Point d'entrée du pipeline
+├── notebooks/
+│   ├── eda_marketing.ipynb     # Analyse exploratoire du dataset
+│   ├── model_comparison.ipynb  # Comparaison des 4 modèles ML
+│   └── optuna_tuning.ipynb     # Optimisation des hyperparamètres
+│
+├── data/
+│   ├── raw/                    # CSV générés (non commités)
+│   └── processed/
+│       ├── marketing.db        # Base SQLite
+│       └── model.pkl           # Modèle LightGBM sauvegardé
+│
+├── outputs/                    # Graphiques générés (PNG)
+│
+├── .github/
+│   └── workflows/
+│       └── tests.yml           # CI/CD GitHub Actions
+│
+├── app.py                      # Dashboard Streamlit
+├── main.py                     # Point d'entrée du pipeline
+├── Makefile                    # Commandes raccourcies
 ├── requirements.txt
+├── .env.example
 └── README.md
 ```
 
 ---
 
 ## ⚙️ Pipeline Architecture
+
 ```
-[ GENERATE ] ── generate.py
-  Simulation de 50 000 clients + ~150 000 touchpoints
-  avec patterns réalistes par canal et segment
+[ GENERATE ] ──── generate.py
+  50 000 clients · ~150 000 touchpoints
+  Score de conversion logistique par segment et canal
         │
         ▼
-[ EXTRACT ] ─── extract.py
+[ VALIDATE ] ──── validate.py
+  Vérification distribution segments, taux conversion, cohérence
+        │
+        ▼
+[ EXTRACT ] ───── extract.py
   Chargement des CSV en DataFrames Pandas
         │
         ▼
-[ TRANSFORM ] ── transform.py
-  • Nettoyage et typage des données
-  • Calcul des 4 modèles d'attribution
-  • Stats de performance par canal
+[ TRANSFORM ] ─── transform.py
+  • Nettoyage et typage
+  • 4 modèles d'attribution (Last/First Click, Linear, Time Decay)
+  • Stats canaux : taux conversion, CPA, ROI
         │
         ▼
-[ LOAD ] ──────── load.py
-  Sauvegarde dans SQLite (4 tables)
+[ VALIDATE ] ──── validate.py
+  Vérification colonnes attribution, taux conversion 0-100%
+        │
+        ▼
+[ LOAD ] ─────── load.py
+  Sauvegarde dans SQLite (7 tables)
         │
         ▼
 [ ANALYZE ] ───── analyze.py
-  8 visualisations → outputs/
+  5 visualisations statiques → outputs/
         │
         ▼
 [ MODEL ] ──────── model.py
-  LightGBM · AUC-ROC 0.77 · CV 5-fold : 0.766 ± 0.006
+  LightGBM · AUC-ROC 0.77 · CV 5-fold : 0.771 ± 0.004
         │
         ▼
 [ DASHBOARD ] ─── app.py
-  Streamlit · Filtres dynamiques · Console SQL
+  Streamlit · Filtres segments/canaux · Console SQL
 ```
 
 ---
 
-## 🤖 Sélection du modèle
+## 📐 Dataset synthétique — Paramètres de simulation
 
-4 modèles ont été comparés en **cross-validation 5-fold** sur les mêmes features et le même split train/test. La démarche complète est disponible dans [`notebooks/model_comparison.ipynb`](notebooks/model_comparison.ipynb).
+Les données étant propriétaires en entreprise, ce dataset a été entièrement simulé avec NumPy en s'appuyant sur des benchmarks marketing sectoriels 2022-2024.
 
-### Modèles testés
+### Canaux marketing
 
-| Modèle | AUC CV (5-fold) | Écart-type | Justification du test |
-|--------|----------------|------------|----------------------|
-| **LightGBM** | **0.7663** | **0.0058** | Alternative Microsoft à XGBoost, plus rapide sur gros volumes |
-| XGBoost | 0.7659 | 0.0058 | Standard industrie depuis 2016, gestion native du déséquilibre |
-| Random Forest | 0.7598 | 0.0041 | Référence robuste sur données tabulaires, peu de tuning |
-| Logistic Regression | 0.6860 | 0.0052 | Baseline incontournable pour valider l'apport des modèles complexes |
+| Canal | Poids | Position typique | Type facturation |
+|-------|-------|-----------------|-----------------|
+| Email | 25% | Closing (fin de parcours) | Coût fixe ~0.03€ |
+| SEO | 20% | Découverte | Organique (0€) |
+| Google Ads | 20% | Découverte | CPC ~1.65€ |
+| Instagram | 15% | Milieu de parcours | CPM ~1.30€ |
+| Facebook | 12% | Milieu de parcours | CPM ~1.15€ |
+| YouTube | 8% | Découverte | CPV ~0.30€ |
 
-### Modèles exclus
+### Segments clients
 
-| Modèle | Raison |
-|--------|--------|
-| SVM / KNN | Complexité quadratique, inadaptés à 50 000 lignes |
-| Réseaux de neurones | Overkill pour features tabulaires simples, faible interprétabilité |
-| CatBoost | Redondant avec LightGBM/XGBoost pour ce cas d'usage |
+| Segment | Part | Profil |
+|---------|------|--------|
+| Premium | 20% | Fort potentiel de conversion (+15%) |
+| Standard | 45% | Comportement moyen |
+| Low-Value | 25% | Faible engagement (-5%) |
+| Churner | 10% | Très faible conversion (-10%) |
 
-### Modèle retenu : LightGBM
-
-LightGBM obtient la meilleure AUC (0.7663) avec un écart-type stable (±0.0058), confirmant sa robustesse sur ce dataset. La différence avec XGBoost est faible (0.0004) mais LightGBM présente l'avantage supplémentaire d'être plus rapide à l'entraînement sur des volumes importants — un critère pertinent en contexte production.
-
-**Performances sur le test set :**
-- AUC-ROC : **0.7706**
-- Recall classe convertie : **71%**
-- Accuracy globale : **70%**
+> La distribution des segments reflète une base client télécom typique, inspirée des structures observées chez les opérateurs français.
 
 ---
 
-## 📊 Modèles d'attribution
+## 📊 Visualisations — Aperçu du dashboard
 
-| Modèle | Description | Usage |
-|--------|-------------|-------|
-| **Last Click** | 100% du crédit au dernier canal | Standard industrie |
-| **First Click** | 100% du crédit au premier canal | Analyse de découverte |
-| **Linear** | Crédit équiréparti entre tous les canaux | Vision équilibrée |
-| **Time Decay** | Crédit pondéré par proximité à la conversion | Valorise les canaux de closing |
+Le dashboard contient **7 graphiques** + une console SQL :
 
-### Résultats clés
+| # | Titre | Description |
+|---|-------|-------------|
+| 1 | 🏆 Modèles d'attribution par canal | Comparaison Last/First Click, Linear, Time Decay |
+| 2 | 🎯 Taux de conversion last-touch | Performance par canal sur les derniers touchpoints |
+| 3 | 📍 Longueur du parcours client | Distribution du nombre de touchpoints par client |
+| 4 | 🗺️ Position des canaux dans le parcours | Heatmap position 1 à 5 par canal |
+| 5 | 💰 Coût par acquisition (CPA) | CPA par canal, hors SEO organique |
+| 6 | 📈 ROI par canal marketing | Retour sur investissement par canal |
+| 7 | 🫧 Volume × Taux conversion × CPA | Vue d'ensemble stratégique — bubble chart |
+| — | 🧮 Requête SQL personnalisée | Console SQL sur toutes les tables |
 
-| Canal | Last Click | First Click | Taux conversion |
-|-------|-----------|-------------|-----------------|
-| Email | 34.80% | 24.91% | 21.30% |
-| Google Ads | 22.25% | 20.32% | 16.99% |
-| SEO | 20.37% | 20.37% | 15.79% |
-| Instagram | 10.33% | 14.78% | 10.61% |
-| Facebook | 8.14% | 12.06% | 10.56% |
-| YouTube | 4.10% | 7.56% | 8.14% |
+### 🏆 Attribution par canal
+Les 4 modèles côte à côte — Email domine en Last Click, SEO en First Click.
+![Attribution](outputs/dashboard_attribution.png)
 
-> **Insight clé** : L'Email convertit majoritairement en last-touch (34.80%) mais initie peu les parcours (24.91%). YouTube à l'inverse est un canal de découverte (7.56% first-click) rarement décisif en conversion (4.10% last-click).
+### 🫧 Vue d'ensemble stratégique
+Volume × Taux de conversion × CPA — Email : idéal (fort taux, CPA quasi nul). Facebook : à revoir (faible taux, CPA élevé).
+![Bubble](outputs/dashboard_bubble.png)
 
----
-
-## 🤖 Modèle ML — Random Forest
-
-| Métrique | Valeur |
-|----------|--------|
-| **AUC-ROC** | 0.6895 |
-| **Recall (convertis)** | 73% |
-| **Features** | Âge, segment, région, ancienneté, nb touchpoints, first/last canal |
-| **Gestion déséquilibre** | `class_weight="balanced"` |
+### 📈 ROI par canal
+Retour sur investissement par canal (hors SEO, canal organique sans coût) — Email largement en tête.
+![ROI](outputs/dashboard_roi.png)
 
 ---
 
-## 📈 Visualisations
+## 🤖 Modèle ML — Prédiction de conversion
 
-### Attribution par canal
-![Attribution](outputs/attribution_comparaison.png)
+### Sélection du modèle
 
-### Taux de conversion last-touch
-![Conversion](outputs/taux_conversion_canal.png)
+4 modèles comparés en **cross-validation 5-fold** sur les mêmes features et le même split train/test :
 
-### Heatmap position des canaux
-![Heatmap](outputs/heatmap_position_canal.png)
+| Modèle | AUC-ROC CV | AUC-ROC Test | Temps entraînement |
+|--------|-----------|--------------|-------------------|
+| Régression Logistique | 0.721 ± 0.003 | 0.718 | < 1s |
+| Random Forest | 0.748 ± 0.005 | 0.745 | ~15s |
+| XGBoost | 0.769 ± 0.004 | 0.771 | ~8s |
+| **LightGBM** ✅ | **0.771 ± 0.004** | **0.774** | **~3s** |
+
+> LightGBM retenu : meilleure AUC et temps d'entraînement le plus court.
+> Démarche complète dans [`notebooks/model_comparison.ipynb`](notebooks/model_comparison.ipynb).
+
+### Features utilisées
+
+| Feature | Description |
+|---------|-------------|
+| `segment` | Segment client (Premium, Standard, Low-Value, Churner) |
+| `canal_last` | Dernier canal du parcours |
+| `canal_first` | Premier canal du parcours |
+| `n_touches` | Nombre total de touchpoints |
+| `age` | Âge du client |
+| `anciennete_mois` | Ancienneté en mois |
+| `region` | Région géographique |
 
 ### Courbe ROC
+
 ![ROC](outputs/roc_curve.png)
 
-### 🔍 Explicabilité abilité du modèle — SHAP
-
-#### Summary plot — Impact global des features
-![SHAP Summary](outputs/shap_summary.png)
-
-> **Lecture** : Chaque barre représente l'impact moyen d'une feature sur les
-> prédictions du modèle (mean absolute SHAP value). Plus la barre est longue,
-> plus la feature influence la décision du modèle.
-
-**Insights clés** :
-- Le **segment client** (Premium, Standard, Low-Value, Churner) est de loin
-  la feature la plus déterminante — le profil client prime sur tout le reste
-- Le **canal last-touch** arrive en 2ème position, confirmant que le canal
-  de conversion a un impact réel sur la prédiction
-- L'âge, l'ancienneté, le canal first-touch et la région ont un impact marginal
-
-#### Waterfall plot — Explication d'une prédiction individuelle
-![SHAP Waterfall](outputs/shap_waterfall.png)
-
-> **Lecture** : Ce graphique décompose la prédiction d'un client spécifique.
-> La valeur de base E[f(x)] = 0.5 est la prédiction moyenne du modèle.
-> Chaque barre montre comment une feature pousse la prédiction vers le haut
-> (rouge, favorable à la conversion) ou vers le bas (bleu, défavorable).
-> La valeur finale f(x) = 0.622 indique une probabilité de conversion de 62%.
+> AUC-ROC : **0.774** — le modèle discrimine bien les clients convertis des non convertis.
+> La démarche d'optimisation des hyperparamètres (Optuna, 50 essais) est disponible
+> dans [`notebooks/optuna_tuning.ipynb`](notebooks/optuna_tuning.ipynb).
 
 ---
 
-## 🧪 Tests
+## 🧪 Tests / Testing
 
 ```bash
-pytest tests/ -v
+python -m pytest tests/ -v
 ```
 
-32 tests unitaires couvrant :
-- `src/transform.py` — nettoyage, attribution, stats canaux
-- `src/generate.py` — fonction sigmoid, score de conversion
+```
+tests/test_generate.py::TestSigmoid::test_zero_returns_half              PASSED
+tests/test_generate.py::TestComputeConversionProba::test_output_0_and_1  PASSED
+tests/test_transform.py::TestComputeAttribution::test_last_click_100     PASSED
+tests/test_transform.py::TestComputeCanalStats::test_expected_columns     PASSED
+...
+32 passed in 0.39s
+```
 
 ---
 
@@ -285,43 +261,42 @@ pytest tests/ -v
 ### Prérequis / Prerequisites
 - Python 3.11+
 - pip
+- `make` — Windows : `winget install GnuWin32.Make` | Mac/Linux : déjà installé
 
 ### Étapes / Steps
 
-1. Cloner le dépôt / Clone the repository
 ```bash
+# 1. Cloner le dépôt
 git clone https://github.com/PhilippeMARTINS/projet-marketing-data.git
 cd projet-marketing-data
-```
 
-2. Créer et activer l'environnement virtuel / Create and activate virtual environment
-```bash
+# 2. Créer et activer l'environnement virtuel
 python -m venv venv
-```
-```bash
-# Windows
-venv\Scripts\activate
-# Mac/Linux
-source venv/bin/activate
-```
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Mac/Linux
 
-3. Installer les dépendances / Install dependencies
-```bash
+# 3. Installer les dépendances
 pip install -r requirements.txt
-```
 
-4. Lancer le pipeline complet / Run the full pipeline
-```bash
+# 4. Lancer le pipeline complet (génération → ETL → ML)
 python main.py
-```
 
-5. Lancer le dashboard / Run the dashboard
-```bash
+# 5. Lancer le dashboard
 streamlit run app.py
 ```
 
+### Commandes Makefile
+
+```bash
+make install    # Installe les dépendances
+make run        # Lance le pipeline complet
+make generate   # Génère uniquement les données simulées
+make dashboard  # Lance le dashboard Streamlit
+make test       # Lance les tests pytest
+make clean      # Nettoie les fichiers temporaires
+```
+
 > ⚠️ Ne jamais copier le dossier `venv/` d'un PC à l'autre — toujours le recréer localement.
-> Never copy the `venv/` folder from one PC to another — always recreate it locally.
 
 ---
 
@@ -331,23 +306,25 @@ streamlit run app.py
 |-------|-------|
 | **Python 3.11** | Langage principal |
 | **NumPy** | Simulation du dataset |
-| **Pandas** | Manipulation des données |
-| **SQLite** | Persistance & requêtes analytiques |
-| **Scikit-learn** | Pipeline ML, métriques, cross-validation |
-| **LightGBM** | Modèle de prédiction de conversion (retenu après comparaison) |
-| **XGBoost**  | Comparé durant le model selection (notebook) |
-| **Matplotlib / Seaborn** | Visualisations |
-| **Streamlit** | Dashboard interactif |
+| **Pandas 2.2** | Manipulation & nettoyage des données |
+| **SQLite** | Stockage relationnel & requêtes analytiques |
+| **Scikit-learn 1.4** | Pipeline ML, métriques, cross-validation |
+| **LightGBM 4.3** | Modèle de prédiction de conversion |
+| **XGBoost** | Comparé durant la sélection de modèle |
+| **Optuna** | Optimisation des hyperparamètres |
+| **Matplotlib / Seaborn** | Visualisations statiques |
+| **Streamlit 1.32** | Dashboard interactif |
 | **Joblib** | Sauvegarde du modèle |
+| **pytest** | Tests unitaires |
 
 ---
 
 ## 👤 Auteur / Author
 
-**Philippe Morais Martins** — Data Engineer / Scientist  
-M2 Data Engineering · Paris Ynov Campus  
+**Philippe Morais Martins** — Data Engineer / Scientist
+M2 Data Engineering · Paris Ynov Campus
 Anglais courant · Portugais bilingue
 
-📧 philippe.martins@hotmail.com  
-🔗 [LinkedIn](https://linkedin.com/in/) ← *(à compléter)*  
+📧 philippe.martins@hotmail.com
+🔗 [LinkedIn](https://www.linkedin.com/in/philippe-morais-martins/)
 💻 [GitHub](https://github.com/PhilippeMARTINS)
